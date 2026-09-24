@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>AspireLocalAI</RootNamespace>
+    <AssemblyName>AspireLocalAI</AssemblyName>
+
+    <!-- NuGet metadata -->
+    <PackageId>AspireLocalAI</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Vladyslav Zaiets</Authors>
+    <Description>.NET Aspire integration for local LLMs - Ollama, vLLM as Aspire resources with health checks and telemetry</Description>
+    <PackageTags>aspire;ollama;ai;llm;local-ai</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/Sarmkadan/aspire-local-ai</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Sarmkadan/aspire-local-ai</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting" Version="13.5.4" />
+  </ItemGroup>
+
+</Project>

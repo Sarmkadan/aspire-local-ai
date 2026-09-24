@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/aspire-local-ai/">
+    <Project Path="src/aspire-local-ai/AspireLocalAI.csproj" />
+  </Folder>
+  <Folder Name="/tests/" />
+  <Folder Name="/tests/aspire-local-ai.Tests/">
+    <Project Path="tests/aspire-local-ai.Tests/AspireLocalAI.Tests.csproj" />
+  </Folder>
+</Solution>
