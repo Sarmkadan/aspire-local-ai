@@ -18,23 +18,26 @@ public sealed class OllamaResource : ContainerResource, IResourceWithConnectionS
     /// <summary>Default port Ollama listens on inside the container.</summary>
     public const int DefaultPort = 11434;
 
+    private readonly List<string> _models = [];
+
     /// <summary>
     /// Initializes a new <see cref="OllamaResource"/>.
     /// </summary>
     /// <param name="name">Resource name, unique within the application model.</param>
     public OllamaResource(string name) : base(name)
     {
-        throw new NotImplementedException();
+        PrimaryEndpoint = new EndpointReference(this, PrimaryEndpointName);
     }
 
     /// <summary>The primary HTTP endpoint reference for this resource.</summary>
-    public EndpointReference PrimaryEndpoint => throw new NotImplementedException();
+    public EndpointReference PrimaryEndpoint { get; }
 
     /// <inheritdoc />
-    public IReadOnlyList<string> Models => throw new NotImplementedException();
+    public IReadOnlyList<string> Models => _models.AsReadOnly();
 
     /// <inheritdoc />
-    public ReferenceExpression ConnectionStringExpression => throw new NotImplementedException();
+    public ReferenceExpression ConnectionStringExpression =>
+        ReferenceExpression.Create($"Endpoint={PrimaryEndpoint.Property(EndpointProperty.Url)}");
 
     /// <summary>
     /// Adds a model tag (for example <c>llama3.2</c> or <c>nomic-embed-text</c>) that must be available
@@ -43,6 +46,9 @@ public sealed class OllamaResource : ContainerResource, IResourceWithConnectionS
     /// <param name="modelName">Ollama model tag.</param>
     public void AddModel(string modelName)
     {
-        throw new NotImplementedException();
+        if (!_models.Contains(modelName))
+        {
+            _models.Add(modelName);
+        }
     }
 }
