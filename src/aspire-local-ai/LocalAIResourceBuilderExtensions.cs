@@ -25,7 +25,7 @@ public static class LocalAIResourceBuilderExtensions
     {
         var resource = new OllamaResource(name);
 
-        return builder.AddResource(resource)
+        var resourceBuilder = builder.AddResource(resource)
             .WithImage(LocalAIContainerImageTags.OllamaImage)
             .WithImageRegistry(LocalAIContainerImageTags.OllamaRegistry)
             .WithImageTag(LocalAIContainerImageTags.OllamaTag)
@@ -33,7 +33,37 @@ public static class LocalAIResourceBuilderExtensions
                 port: port,
                 targetPort: OllamaResource.DefaultPort,
                 name: OllamaResource.PrimaryEndpointName);
+
+        builder.Eventing.Subscribe<ResourceReadyEvent>(resource, async (evt, ct) =>
+        {
+            var notifications = evt.Services.GetRequiredService<ResourceNotificationService>();
+
+            var value = await resource.PrimaryEndpoint.GetValueAsync(ct).ConfigureAwait(false)
+                ?? throw new InvalidOperationException($"Endpoint of Ollama resource '{resource.Name}' is not allocated.");
+
+            // Status updates are fire-and-forget from the puller's sync callback; the last one is awaited below.
+            var lastPublish = Task.CompletedTask;
+            void ReportStatus(string text) =>
+                lastPublish = notifications.PublishUpdateAsync(resource, s => s with
+                {
+                    State = new ResourceStateSnapshot(text, KnownResourceStateStyles.Info),
+                });
+
+            await OllamaModelPuller.PullMissingAsync(
+                new Uri(value),
+                resource.Models,
+                PullClient,
+                ReportStatus,
+                ct).ConfigureAwait(false);
+
+            await lastPublish.ConfigureAwait(false);
+        });
+
+        return resourceBuilder;
     }
+
+    // Pulls can run for many minutes on large models, so no request timeout; cancellation comes from the event token.
+    private static readonly HttpClient PullClient = new() { Timeout = Timeout.InfiniteTimeSpan };
 
     /// <summary>
     /// Adds a vLLM container resource serving a single model to the application model.
