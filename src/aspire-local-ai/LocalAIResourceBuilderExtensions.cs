@@ -1,6 +1,8 @@
 using System.Globalization;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace AspireLocalAI;
 
@@ -152,8 +154,33 @@ public static class LocalAIResourceBuilderExtensions
         LocalAIHealthCheckOptions? options = null)
         where T : ContainerResource, ILocalModelServer
     {
-        throw new NotImplementedException();
+        options ??= new();
+
+        var key = $"{builder.Resource.Name}_model_check";
+        var isOllama = builder.Resource is OllamaResource;
+
+        // Resolved at check time so the endpoint and model list reflect the final application model.
+        async Task<Uri?> ResolveEndpointAsync(CancellationToken ct)
+        {
+            var value = await builder.Resource.PrimaryEndpoint.GetValueAsync(ct).ConfigureAwait(false);
+            return value is null ? null : new Uri(value);
+        }
+
+        builder.ApplicationBuilder.Services.AddHealthChecks().Add(new HealthCheckRegistration(
+            key,
+            _ => new LocalModelHealthCheck(
+                ResolveEndpointAsync,
+                builder.Resource.Models,
+                options,
+                SharedProbeClient,
+                isOllama),
+            failureStatus: null,
+            tags: null));
+
+        return builder.WithHealthCheck(key);
     }
+
+    private static readonly HttpClient SharedProbeClient = new();
 
     /// <summary>
     /// Enables OpenTelemetry export from the server into the Aspire dashboard (metrics: tokens/sec,
