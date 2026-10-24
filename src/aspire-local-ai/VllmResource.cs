@@ -18,6 +18,9 @@ public sealed class VllmResource : ContainerResource, IResourceWithConnectionStr
     /// <summary>Default port vLLM listens on inside the container.</summary>
     public const int DefaultPort = 8000;
 
+    private readonly string _modelName;
+    private readonly EndpointReference _primaryEndpoint;
+
     /// <summary>
     /// Initializes a new <see cref="VllmResource"/>.
     /// </summary>
@@ -25,14 +28,15 @@ public sealed class VllmResource : ContainerResource, IResourceWithConnectionStr
     /// <param name="modelName">Hugging Face model id served by this instance, e.g. <c>Qwen/Qwen2.5-7B-Instruct</c>.</param>
     public VllmResource(string name, string modelName) : base(name)
     {
-        throw new NotImplementedException();
+        _modelName = modelName;
+        _primaryEndpoint = new EndpointReference(this, PrimaryEndpointName);
     }
 
     /// <summary>The Hugging Face model id served by this instance.</summary>
-    public string ModelName => throw new NotImplementedException();
+    public string ModelName => _modelName;
 
     /// <summary>The primary HTTP endpoint reference for this resource.</summary>
-    public EndpointReference PrimaryEndpoint => throw new NotImplementedException();
+    public EndpointReference PrimaryEndpoint => _primaryEndpoint;
 
     /// <inheritdoc />
     public IReadOnlyList<string> Models => throw new NotImplementedException();
