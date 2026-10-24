@@ -13,4 +13,13 @@ internal static class LocalAIContainerImageTags
 
     /// <summary>Ollama image tag.</summary>
     internal const string OllamaTag = "latest";
+
+    /// <summary>vLLM OpenAI-compatible server image repository.</summary>
+    internal const string VllmImage = "vllm/vllm-openai";
+
+    /// <summary>Registry hosting the vLLM image.</summary>
+    internal const string VllmRegistry = "docker.io";
+
+    /// <summary>vLLM image tag.</summary>
+    internal const string VllmTag = "latest";
 }

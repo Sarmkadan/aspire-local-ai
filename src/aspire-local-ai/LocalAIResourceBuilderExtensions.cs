@@ -46,7 +46,17 @@ public static class LocalAIResourceBuilderExtensions
         string modelName,
         int? port = null)
     {
-        throw new NotImplementedException();
+        var resource = new VllmResource(name, modelName);
+
+        return builder.AddResource(resource)
+            .WithImage(LocalAIContainerImageTags.VllmImage)
+            .WithImageRegistry(LocalAIContainerImageTags.VllmRegistry)
+            .WithImageTag(LocalAIContainerImageTags.VllmTag)
+            .WithHttpEndpoint(
+                port: port,
+                targetPort: VllmResource.DefaultPort,
+                name: VllmResource.PrimaryEndpointName)
+            .WithArgs("--model", modelName);
     }
 
     /// <summary>
