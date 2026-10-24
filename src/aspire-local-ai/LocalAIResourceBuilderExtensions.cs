@@ -273,7 +273,27 @@ public static class LocalAIResourceBuilderExtensions
     public static IResourceBuilder<T> WithOpenTelemetry<T>(this IResourceBuilder<T> builder)
         where T : ContainerResource, ILocalModelServer
     {
+        return builder.WithOpenTelemetry(new LocalAIOpenTelemetryOptions());
+    }
+
+    /// <summary>
+    /// Enables OpenTelemetry export from the server into the Aspire dashboard, using the given identity and signal options.
+    /// Calling this again on the same resource is a no-op; options passed to later calls are ignored.
+    /// </summary>
+    /// <typeparam name="T">Resource type.</typeparam>
+    /// <param name="builder">The resource builder.</param>
+    /// <param name="options">Service name, signal toggles and extra resource attributes.</param>
+    /// <returns>The same builder for chaining.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="builder"/> or <paramref name="options"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="options"/> fails <see cref="LocalAIOpenTelemetryOptions.Validate"/>.</exception>
+    public static IResourceBuilder<T> WithOpenTelemetry<T>(
+        this IResourceBuilder<T> builder,
+        LocalAIOpenTelemetryOptions options)
+        where T : ContainerResource, ILocalModelServer
+    {
         ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(options);
+        options.Validate();
 
         // Idempotent: a second call would otherwise add duplicate OTLP env vars and CLI args.
         if (builder.Resource.Annotations.OfType<OpenTelemetryAnnotation>().Any())
@@ -283,9 +303,33 @@ public static class LocalAIResourceBuilderExtensions
 
         builder.WithAnnotation(new OpenTelemetryAnnotation());
         builder.WithOtlpExporter();
-        builder.WithEnvironment("OTEL_SERVICE_NAME", builder.Resource.Name);
+        builder.WithEnvironment("OTEL_SERVICE_NAME", options.ServiceName ?? builder.Resource.Name);
 
-        if (builder.Resource is VllmResource)
+        if (options.ResourceAttributes.Count > 0)
+        {
+            var attributes = string.Join(',', options.ResourceAttributes.Select(kv => $"{kv.Key}={kv.Value}"));
+
+            // WithOtlpExporter already sets OTEL_RESOURCE_ATTRIBUTES (service.instance.id), so append rather than replace.
+            builder.WithEnvironment(context =>
+            {
+                context.EnvironmentVariables["OTEL_RESOURCE_ATTRIBUTES"] =
+                    context.EnvironmentVariables.TryGetValue("OTEL_RESOURCE_ATTRIBUTES", out var existing) && existing is string { Length: > 0 } current
+                        ? $"{current},{attributes}"
+                        : attributes;
+            });
+        }
+
+        if (!options.EnableTraces)
+        {
+            builder.WithEnvironment("OTEL_TRACES_EXPORTER", "none");
+        }
+
+        if (!options.EnableMetrics)
+        {
+            builder.WithEnvironment("OTEL_METRICS_EXPORTER", "none");
+        }
+
+        if (builder.Resource is VllmResource && options.EnableTraces)
         {
             // vLLM takes its trace endpoint from --otlp-traces-endpoint, so the OTLP endpoint injected
             // by WithOtlpExporter is mirrored into a variable the arg callback can read.
