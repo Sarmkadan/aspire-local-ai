@@ -222,7 +222,42 @@ public static class LocalAIResourceBuilderExtensions
     public static IResourceBuilder<T> WithOpenTelemetry<T>(this IResourceBuilder<T> builder)
         where T : ContainerResource, ILocalModelServer
     {
-        throw new NotImplementedException();
+        // Idempotent: a second call would otherwise add duplicate OTLP env vars and CLI args.
+        if (builder.Resource.Annotations.OfType<OpenTelemetryAnnotation>().Any())
+        {
+            return builder;
+        }
+
+        builder.WithAnnotation(new OpenTelemetryAnnotation());
+        builder.WithOtlpExporter();
+        builder.WithEnvironment("OTEL_SERVICE_NAME", builder.Resource.Name);
+
+        if (builder.Resource is VllmResource)
+        {
+            // vLLM takes its trace endpoint from --otlp-traces-endpoint, so the OTLP endpoint injected
+            // by WithOtlpExporter is mirrored into a variable the arg callback can read.
+            object? tracesEndpoint = null;
+
+            builder.WithEnvironment("VLLM_OTEL_TRACES_ENABLED", "1");
+            builder.WithEnvironment(context =>
+            {
+                if (context.EnvironmentVariables.TryGetValue("OTEL_EXPORTER_OTLP_ENDPOINT", out var endpoint))
+                {
+                    tracesEndpoint = endpoint;
+                    context.EnvironmentVariables["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] = endpoint;
+                }
+            });
+            builder.WithArgs(context =>
+            {
+                if (tracesEndpoint is not null)
+                {
+                    context.Args.Add("--otlp-traces-endpoint");
+                    context.Args.Add(tracesEndpoint);
+                }
+            });
+        }
+
+        return builder;
     }
 }
 

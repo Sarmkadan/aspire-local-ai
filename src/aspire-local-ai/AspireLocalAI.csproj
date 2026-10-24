@@ -30,4 +30,8 @@
     <PackageReference Include="Aspire.Hosting" Version="13.5.4" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="AspireLocalAI.Tests" />
+  </ItemGroup>
+
 </Project>
