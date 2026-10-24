@@ -23,6 +23,15 @@ public static class LocalAIResourceBuilderExtensions
         string name,
         int? port = null)
     {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        if (port is { } p)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(p, nameof(port));
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(p, 65535, nameof(port));
+        }
+
         var resource = new OllamaResource(name);
 
         var resourceBuilder = builder.AddResource(resource)
@@ -119,6 +128,9 @@ public static class LocalAIResourceBuilderExtensions
     public static IResourceBuilder<T> WithModel<T>(this IResourceBuilder<T> builder, string modelName)
         where T : ContainerResource, ILocalModelServer
     {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentException.ThrowIfNullOrWhiteSpace(modelName);
+
         if (builder.Resource is OllamaResource ollama)
         {
             ollama.AddModel(modelName);
@@ -140,9 +152,17 @@ public static class LocalAIResourceBuilderExtensions
     /// <param name="builder">The resource builder.</param>
     /// <param name="name">Optional volume name; derived from the resource name when <see langword="null"/>.</param>
     /// <returns>The same builder for chaining.</returns>
+    /// <exception cref="ArgumentException"><paramref name="name"/> is non-null but empty or whitespace.</exception>
     public static IResourceBuilder<T> WithDataVolume<T>(this IResourceBuilder<T> builder, string? name = null)
         where T : ContainerResource, ILocalModelServer
     {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        if (name is not null)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        }
+
         var targetPath = builder.Resource switch
         {
             OllamaResource => OllamaResource.DataMountPath,
@@ -168,6 +188,18 @@ public static class LocalAIResourceBuilderExtensions
         int? count = null)
         where T : ContainerResource, ILocalModelServer
     {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        if (!Enum.IsDefined(vendor))
+        {
+            throw new ArgumentOutOfRangeException(nameof(vendor), vendor, "Unknown GPU vendor.");
+        }
+
+        if (count is { } c)
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan(c, 1, nameof(count));
+        }
+
         string[] runtimeArgs = vendor switch
         {
             GpuVendor.Nvidia => ["--gpus", count is null ? "all" : count.Value.ToString(CultureInfo.InvariantCulture)],
@@ -197,6 +229,8 @@ public static class LocalAIResourceBuilderExtensions
         LocalAIHealthCheckOptions? options = null)
         where T : ContainerResource, ILocalModelServer
     {
+        ArgumentNullException.ThrowIfNull(builder);
+
         options ??= new();
 
         var key = $"{builder.Resource.Name}_model_check";
@@ -238,6 +272,8 @@ public static class LocalAIResourceBuilderExtensions
     public static IResourceBuilder<T> WithOpenTelemetry<T>(this IResourceBuilder<T> builder)
         where T : ContainerResource, ILocalModelServer
     {
+        ArgumentNullException.ThrowIfNull(builder);
+
         // Idempotent: a second call would otherwise add duplicate OTLP env vars and CLI args.
         if (builder.Resource.Annotations.OfType<OpenTelemetryAnnotation>().Any())
         {
