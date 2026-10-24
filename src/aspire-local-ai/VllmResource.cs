@@ -19,6 +19,7 @@ public sealed class VllmResource : ContainerResource, IResourceWithConnectionStr
     public const int DefaultPort = 8000;
 
     private readonly string _modelName;
+    private readonly string[] _models;
     private readonly EndpointReference _primaryEndpoint;
 
     /// <summary>
@@ -29,6 +30,7 @@ public sealed class VllmResource : ContainerResource, IResourceWithConnectionStr
     public VllmResource(string name, string modelName) : base(name)
     {
         _modelName = modelName;
+        _models = [modelName];
         _primaryEndpoint = new EndpointReference(this, PrimaryEndpointName);
     }
 
@@ -39,8 +41,9 @@ public sealed class VllmResource : ContainerResource, IResourceWithConnectionStr
     public EndpointReference PrimaryEndpoint => _primaryEndpoint;
 
     /// <inheritdoc />
-    public IReadOnlyList<string> Models => throw new NotImplementedException();
+    public IReadOnlyList<string> Models => _models;
 
     /// <inheritdoc />
-    public ReferenceExpression ConnectionStringExpression => throw new NotImplementedException();
+    public ReferenceExpression ConnectionStringExpression =>
+        ReferenceExpression.Create($"Endpoint=http://{PrimaryEndpoint.Property(EndpointProperty.Host)}:{PrimaryEndpoint.Property(EndpointProperty.Port)}/v1;Model={ModelName}");
 }
