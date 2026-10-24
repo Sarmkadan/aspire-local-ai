@@ -19,6 +19,7 @@ public sealed class OllamaResource : ContainerResource, IResourceWithConnectionS
     public const int DefaultPort = 11434;
 
     private readonly List<string> _models = [];
+    private readonly EndpointReference _primaryEndpoint;
 
     /// <summary>
     /// Initializes a new <see cref="OllamaResource"/>.
@@ -26,11 +27,11 @@ public sealed class OllamaResource : ContainerResource, IResourceWithConnectionS
     /// <param name="name">Resource name, unique within the application model.</param>
     public OllamaResource(string name) : base(name)
     {
-        PrimaryEndpoint = new EndpointReference(this, PrimaryEndpointName);
+        _primaryEndpoint = new EndpointReference(this, PrimaryEndpointName);
     }
 
     /// <summary>The primary HTTP endpoint reference for this resource.</summary>
-    public EndpointReference PrimaryEndpoint { get; }
+    public EndpointReference PrimaryEndpoint => _primaryEndpoint;
 
     /// <inheritdoc />
     public IReadOnlyList<string> Models => _models.AsReadOnly();
