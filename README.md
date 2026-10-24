@@ -46,6 +46,58 @@ var endpoint = builder.Configuration.GetConnectionString("ollama")!;
 builder.Services.AddChatClient(new OllamaApiClient(new Uri(endpoint), "llama3.2"));
 ```
 
+## vLLM example
+
+AppHost (one vLLM resource serves one model):
+
+```csharp
+var builder = DistributedApplication.CreateBuilder(args);
+
+var vllm = builder.AddVllm("vllm", "Qwen/Qwen2.5-7B-Instruct")
+    .WithDataVolume()
+    .WithGpu(GpuVendor.Nvidia, count: 1)
+    .WithModelHealthCheck()
+    .WithOpenTelemetry();
+
+builder.AddProject<Projects.Api>("api")
+    .WithReference(vllm)
+    .WaitFor(vllm);
+
+builder.Build().Run();
+```
+
+Consuming project. The connection string has the form `Endpoint=http://host:port/v1;Model=name`, so it is parsed
+with `DbConnectionStringBuilder` and passed to an OpenAI-compatible client (`OpenAI` package):
+
+```csharp
+using System.ClientModel;
+using System.Data.Common;
+using OpenAI;
+
+var connectionString = builder.Configuration.GetConnectionString("vllm")!;
+var parts = new DbConnectionStringBuilder { ConnectionString = connectionString };
+var endpoint = (string)parts["Endpoint"];
+var model = (string)parts["Model"];
+
+var openAi = new OpenAIClient(
+    new ApiKeyCredential("unused"),
+    new OpenAIClientOptions { Endpoint = new Uri(endpoint) });
+
+var chatClient = openAi.GetChatClient(model);
+```
+
+## GPU passthrough
+
+`WithGpu()` adds the runtime arguments below to the container. It works the same way for Ollama and vLLM.
+
+| Vendor | Runtime args | Prerequisites |
+|--------|--------------|---------------|
+| `Nvidia` (default) | `--gpus all`, or `--gpus N` when `count: N` is passed | NVIDIA Container Toolkit installed on the host |
+| `Amd` | `--device /dev/kfd --device /dev/dri` | ROCm installed on the host. For Ollama the image tag switches to `rocm` |
+
+> **Note:** `WithGpu()` on Docker Desktop for Mac is not supported. There is no GPU passthrough there, so the container
+> fails at start with a device driver error instead of falling back to CPU. Remove `WithGpu()` for local runs on a Mac.
+
 ## Installation
 
 ```bash
