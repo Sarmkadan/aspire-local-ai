@@ -196,14 +196,17 @@ public static class LocalAIResourceBuilderExtensions
             return value is null ? null : new Uri(value);
         }
 
+        // Single instance per registration: the warm-up flag must outlive individual check runs.
+        var check = new Lazy<LocalModelHealthCheck>(() => new LocalModelHealthCheck(
+            ResolveEndpointAsync,
+            builder.Resource.Models,
+            options,
+            SharedProbeClient,
+            isOllama));
+
         builder.ApplicationBuilder.Services.AddHealthChecks().Add(new HealthCheckRegistration(
             key,
-            _ => new LocalModelHealthCheck(
-                ResolveEndpointAsync,
-                builder.Resource.Models,
-                options,
-                SharedProbeClient,
-                isOllama),
+            _ => check.Value,
             failureStatus: null,
             tags: null));
 

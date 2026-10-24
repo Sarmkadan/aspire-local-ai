@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -13,7 +14,9 @@ namespace AspireLocalAI;
 internal sealed class LocalModelHealthCheck : IHealthCheck
 {
     private const string OllamaTagsPath = "/api/tags";
+    private const string OllamaGeneratePath = "/api/generate";
     private const string OpenAiModelsPath = "/v1/models";
+    private const string OpenAiCompletionsPath = "/v1/completions";
     private const string LatestTag = ":latest";
 
     private readonly Func<CancellationToken, Task<Uri?>> _endpointResolver;
@@ -21,6 +24,7 @@ internal sealed class LocalModelHealthCheck : IHealthCheck
     private readonly LocalAIHealthCheckOptions _options;
     private readonly HttpClient _httpClient;
     private readonly bool _isOllama;
+    private volatile bool _warmedUp;
 
     /// <summary>
     /// Initializes a new <see cref="LocalModelHealthCheck"/>.
@@ -75,17 +79,19 @@ internal sealed class LocalModelHealthCheck : IHealthCheck
             var loaded = ParseModelNames(document.RootElement);
             var data = new Dictionary<string, object> { ["models"] = loaded };
 
-            if (!_options.RequireAllModels)
-            {
-                return HealthCheckResult.Healthy(data: data);
-            }
-
             var missing = _requiredModels.Where(required => !loaded.Any(name => SameModel(name, required))).ToList();
-            if (missing.Count > 0)
+            if (_options.RequireAllModels && missing.Count > 0)
             {
                 return HealthCheckResult.Degraded(
                     $"missing models: {string.Join(", ", missing)}",
                     data: data);
+            }
+
+            // Warm-up only once every declared model is present, so the probe never targets a model that is not loaded.
+            if (_options.WarmupPrompt is not null && missing.Count == 0 && _requiredModels.Count > 0)
+            {
+                data["warmup"] = await WarmUpAsync(endpoint, _requiredModels[0], _options.WarmupPrompt, cancellationToken)
+                    .ConfigureAwait(false);
             }
 
             return HealthCheckResult.Healthy(data: data);
@@ -93,6 +99,40 @@ internal sealed class LocalModelHealthCheck : IHealthCheck
         catch (Exception ex) when (IsProbeFailure(ex, cancellationToken))
         {
             return HealthCheckResult.Unhealthy("model server probe failed", ex);
+        }
+    }
+
+    /// <summary>
+    /// Sends the warm-up prompt once per instance. Failures are reported in the returned status and never
+    /// fail the check, so the next check run retries the warm-up.
+    /// </summary>
+    private async Task<string> WarmUpAsync(Uri endpoint, string model, string prompt, CancellationToken callerToken)
+    {
+        if (_warmedUp)
+        {
+            return "done";
+        }
+
+        using var warmupCts = CancellationTokenSource.CreateLinkedTokenSource(callerToken);
+        warmupCts.CancelAfter(_options.Timeout);
+
+        try
+        {
+            var path = _isOllama ? OllamaGeneratePath : OpenAiCompletionsPath;
+            object payload = _isOllama
+                ? new { model, prompt, stream = false, options = new { num_predict = 1 } }
+                : new { model, prompt, max_tokens = 1 };
+
+            using var content = JsonContent.Create(payload);
+            using var response = await _httpClient.PostAsync(new Uri(endpoint, path), content, warmupCts.Token).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+
+            _warmedUp = true;
+            return "done";
+        }
+        catch (Exception ex) when (!callerToken.IsCancellationRequested)
+        {
+            return $"failed: {ex.Message}";
         }
     }
 
