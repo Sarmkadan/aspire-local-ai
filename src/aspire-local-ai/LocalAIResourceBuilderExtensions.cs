@@ -71,14 +71,27 @@ public static class LocalAIResourceBuilderExtensions
     /// <param name="builder">The distributed application builder.</param>
     /// <param name="name">Resource name.</param>
     /// <param name="modelName">Hugging Face model id, e.g. <c>Qwen/Qwen2.5-7B-Instruct</c>.</param>
-    /// <param name="port">Optional host port to bind the HTTP endpoint to.</param>
+    /// <param name="port">Optional host port to bind the HTTP endpoint to; must be in the range 1–65535 when specified.</param>
     /// <returns>A resource builder for further configuration.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="builder"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="name"/> or <paramref name="modelName"/> is null, empty or whitespace.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="port"/> is outside the range 1–65535.</exception>
     public static IResourceBuilder<VllmResource> AddVllm(
         this IDistributedApplicationBuilder builder,
         string name,
         string modelName,
         int? port = null)
     {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentException.ThrowIfNullOrWhiteSpace(modelName);
+
+        if (port is { } p)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(p, nameof(port));
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(p, 65535, nameof(port));
+        }
+
         var resource = new VllmResource(name, modelName);
 
         return builder.AddResource(resource)

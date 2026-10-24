@@ -1,8 +1,43 @@
+using Aspire.Hosting;
+
 namespace AspireLocalAI.Tests;
 
 public class VllmResourceTests
 {
     private const string ModelName = "Qwen/Qwen2.5-7B-Instruct";
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Ctor_NullOrWhiteSpaceModelName_ThrowsArgumentException(string? modelName)
+    {
+        // ThrowIfNullOrWhiteSpace throws ArgumentNullException for null, so accept the base type.
+        var ex = Assert.ThrowsAny<ArgumentException>(() => new VllmResource("vllm", modelName!));
+        Assert.Equal("modelName", ex.ParamName);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(70000)]
+    public void AddVllm_PortOutOfRange_ThrowsArgumentOutOfRangeException(int port)
+    {
+        var builder = DistributedApplication.CreateBuilder();
+
+        var ex = Assert.Throws<ArgumentOutOfRangeException>("port", () => builder.AddVllm("vllm", ModelName, port));
+        Assert.Equal(port, ex.ActualValue);
+    }
+
+    [Fact]
+    public void AddVllm_PortAtUpperBound_DoesNotThrow()
+    {
+        var builder = DistributedApplication.CreateBuilder();
+
+        var exception = Record.Exception(() => builder.AddVllm("vllm", ModelName, 65535));
+
+        Assert.Null(exception);
+    }
 
     [Fact]
     public void Ctor_WithNameAndModel_SetsNameAndModelName()

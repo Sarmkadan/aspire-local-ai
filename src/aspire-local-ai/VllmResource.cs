@@ -30,8 +30,12 @@ public sealed class VllmResource : ContainerResource, IResourceWithConnectionStr
     /// </summary>
     /// <param name="name">Resource name, unique within the application model.</param>
     /// <param name="modelName">Hugging Face model id served by this instance, e.g. <c>Qwen/Qwen2.5-7B-Instruct</c>.</param>
+    /// <exception cref="ArgumentException"><paramref name="modelName"/> is null, empty or whitespace.</exception>
     public VllmResource(string name, string modelName) : base(name)
     {
+        // Name is already validated by the ContainerResource base constructor.
+        ArgumentException.ThrowIfNullOrWhiteSpace(modelName);
+
         _modelName = modelName;
         _models = [modelName];
         _primaryEndpoint = new EndpointReference(this, PrimaryEndpointName);
