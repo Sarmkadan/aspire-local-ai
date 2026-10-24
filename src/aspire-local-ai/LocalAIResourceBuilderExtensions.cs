@@ -20,7 +20,16 @@ public static class LocalAIResourceBuilderExtensions
         string name,
         int? port = null)
     {
-        throw new NotImplementedException();
+        var resource = new OllamaResource(name);
+
+        return builder.AddResource(resource)
+            .WithImage(LocalAIContainerImageTags.OllamaImage)
+            .WithImageRegistry(LocalAIContainerImageTags.OllamaRegistry)
+            .WithImageTag(LocalAIContainerImageTags.OllamaTag)
+            .WithHttpEndpoint(
+                port: port,
+                targetPort: OllamaResource.DefaultPort,
+                name: OllamaResource.PrimaryEndpointName);
     }
 
     /// <summary>
