@@ -18,6 +18,9 @@ public sealed class OllamaResource : ContainerResource, IResourceWithConnectionS
     /// <summary>Default port Ollama listens on inside the container.</summary>
     public const int DefaultPort = 11434;
 
+    /// <summary>Path inside the container where Ollama stores downloaded model weights.</summary>
+    internal const string DataMountPath = "/root/.ollama";
+
     private readonly List<string> _models = [];
     private readonly EndpointReference _primaryEndpoint;
 

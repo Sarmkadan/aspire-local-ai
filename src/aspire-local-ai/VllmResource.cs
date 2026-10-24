@@ -18,6 +18,9 @@ public sealed class VllmResource : ContainerResource, IResourceWithConnectionStr
     /// <summary>Default port vLLM listens on inside the container.</summary>
     public const int DefaultPort = 8000;
 
+    /// <summary>Path inside the container where the Hugging Face cache (model weights) is stored.</summary>
+    internal const string DataMountPath = "/root/.cache/huggingface";
+
     private readonly string _modelName;
     private readonly string[] _models;
     private readonly EndpointReference _primaryEndpoint;

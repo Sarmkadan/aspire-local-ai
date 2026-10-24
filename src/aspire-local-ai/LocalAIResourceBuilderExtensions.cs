@@ -97,7 +97,15 @@ public static class LocalAIResourceBuilderExtensions
     public static IResourceBuilder<T> WithDataVolume<T>(this IResourceBuilder<T> builder, string? name = null)
         where T : ContainerResource, ILocalModelServer
     {
-        throw new NotImplementedException();
+        var targetPath = builder.Resource switch
+        {
+            OllamaResource => OllamaResource.DataMountPath,
+            VllmResource => VllmResource.DataMountPath,
+            _ => throw new InvalidOperationException(
+                $"No data mount path is known for resource type '{builder.Resource.GetType().Name}'."),
+        };
+
+        return builder.WithVolume(name ?? $"{builder.Resource.Name}-data", targetPath, isReadOnly: false);
     }
 
     /// <summary>
