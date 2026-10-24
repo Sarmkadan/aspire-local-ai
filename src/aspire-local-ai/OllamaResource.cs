@@ -47,9 +47,17 @@ public sealed class OllamaResource : ContainerResource, IResourceWithConnectionS
     /// Adds a model tag (for example <c>llama3.2</c> or <c>nomic-embed-text</c>) that must be available
     /// on the server before it is considered healthy.
     /// </summary>
-    /// <param name="modelName">Ollama model tag.</param>
+    /// <param name="modelName">Ollama model tag. Must not be null, empty, or contain whitespace.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="modelName"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="modelName"/> is empty, whitespace, or contains whitespace characters.</exception>
     public void AddModel(string modelName)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(modelName);
+        if (modelName.Any(char.IsWhiteSpace))
+        {
+            throw new ArgumentException("Ollama model tags cannot contain whitespace.", nameof(modelName));
+        }
+
         if (!_models.Contains(modelName))
         {
             _models.Add(modelName);

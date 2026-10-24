@@ -51,6 +51,41 @@ public class OllamaResourceTests
     }
 
     [Fact]
+    public void AddModel_NullTag_ThrowsArgumentNullException()
+    {
+        var resource = new OllamaResource("ollama");
+
+        var ex = Assert.Throws<ArgumentNullException>(() => resource.AddModel(null!));
+
+        Assert.Equal("modelName", ex.ParamName);
+        Assert.Empty(resource.Models);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("  ")]
+    public void AddModel_EmptyOrWhitespaceTag_ThrowsArgumentException(string tag)
+    {
+        var resource = new OllamaResource("ollama");
+
+        var ex = Assert.Throws<ArgumentException>(() => resource.AddModel(tag));
+
+        Assert.Equal("modelName", ex.ParamName);
+        Assert.Empty(resource.Models);
+    }
+
+    [Fact]
+    public void AddModel_TagContainingWhitespace_ThrowsArgumentException()
+    {
+        var resource = new OllamaResource("ollama");
+
+        var ex = Assert.Throws<ArgumentException>(() => resource.AddModel("bad tag"));
+
+        Assert.Equal("modelName", ex.ParamName);
+        Assert.Empty(resource.Models);
+    }
+
+    [Fact]
     public void DefaultPort_Is11434()
     {
         Assert.Equal(11434, OllamaResource.DefaultPort);
