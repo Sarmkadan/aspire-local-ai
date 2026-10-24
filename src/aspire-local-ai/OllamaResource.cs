@@ -38,7 +38,7 @@ public sealed class OllamaResource : ContainerResource, IResourceWithConnectionS
 
     /// <inheritdoc />
     public ReferenceExpression ConnectionStringExpression =>
-        ReferenceExpression.Create($"Endpoint={PrimaryEndpoint.Property(EndpointProperty.Url)}");
+        ReferenceExpression.Create($"Endpoint=http://{PrimaryEndpoint.Property(EndpointProperty.Host)}:{PrimaryEndpoint.Property(EndpointProperty.Port)}");
 
     /// <summary>
     /// Adds a model tag (for example <c>llama3.2</c> or <c>nomic-embed-text</c>) that must be available
