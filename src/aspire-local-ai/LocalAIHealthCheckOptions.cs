@@ -23,4 +23,27 @@ public sealed class LocalAIHealthCheckOptions
     /// the model load cost. <see langword="null"/> disables warm-up.
     /// </summary>
     public string? WarmupPrompt { get; set; }
+
+    /// <summary>
+    /// Checks that the options are usable and throws otherwise.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <see cref="Timeout"/> is zero, negative, or greater than 10 minutes.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// <see cref="WarmupPrompt"/> is non-null but consists only of whitespace.
+    /// </exception>
+    public void Validate()
+    {
+        if (Timeout <= TimeSpan.Zero || Timeout > TimeSpan.FromMinutes(10))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(Timeout), Timeout, "Timeout must be greater than zero and at most 10 minutes.");
+        }
+
+        if (WarmupPrompt is not null && WarmupPrompt.Trim().Length == 0)
+        {
+            throw new ArgumentException("WarmupPrompt must not be whitespace-only.", nameof(WarmupPrompt));
+        }
+    }
 }

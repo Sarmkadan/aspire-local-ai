@@ -232,6 +232,7 @@ public static class LocalAIResourceBuilderExtensions
         ArgumentNullException.ThrowIfNull(builder);
 
         options ??= new();
+        options.Validate();
 
         var key = $"{builder.Resource.Name}_model_check";
         var isOllama = builder.Resource is OllamaResource;
