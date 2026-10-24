@@ -1,3 +1,4 @@
+using System.Globalization;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 
@@ -122,7 +123,21 @@ public static class LocalAIResourceBuilderExtensions
         int? count = null)
         where T : ContainerResource, ILocalModelServer
     {
-        throw new NotImplementedException();
+        string[] runtimeArgs = vendor switch
+        {
+            GpuVendor.Nvidia => ["--gpus", count is null ? "all" : count.Value.ToString(CultureInfo.InvariantCulture)],
+            GpuVendor.Amd => ["--device", "/dev/kfd", "--device", "/dev/dri"],
+            _ => throw new ArgumentOutOfRangeException(nameof(vendor), vendor, "Unknown GPU vendor."),
+        };
+
+        builder.WithAnnotation(new GpuAnnotation(vendor, count));
+
+        if (vendor == GpuVendor.Amd && builder.Resource is OllamaResource)
+        {
+            builder.WithImageTag(LocalAIContainerImageTags.OllamaRocmTag);
+        }
+
+        return builder.WithContainerRuntimeArgs(runtimeArgs);
     }
 
     /// <summary>

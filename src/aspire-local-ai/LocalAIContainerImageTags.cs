@@ -14,6 +14,9 @@ internal static class LocalAIContainerImageTags
     /// <summary>Ollama image tag.</summary>
     internal const string OllamaTag = "latest";
 
+    /// <summary>Ollama image tag with ROCm (AMD GPU) support.</summary>
+    internal const string OllamaRocmTag = "rocm";
+
     /// <summary>vLLM OpenAI-compatible server image repository.</summary>
     internal const string VllmImage = "vllm/vllm-openai";
 
