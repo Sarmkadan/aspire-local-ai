@@ -116,6 +116,62 @@ Requires .NET 9 SDK and Docker (or Podman). GPU support needs the NVIDIA Contain
 | `LocalAIResourceBuilderExtensions` | `AddOllama`, `AddVllm`, `WithModel`, `WithDataVolume`, `WithGpu`, `WithModelHealthCheck`, `WithOpenTelemetry` |
 | `LocalAIHealthCheckOptions` | Timeout, `RequireAllModels`, `WarmupPrompt` |
 
+## Health checks
+
+`WithModelHealthCheck()` registers a health check under the key `<resource>_model_check` (for example `ollama_model_check`)
+and attaches it to the resource. The check probes the server on each run:
+
+- Ollama: `GET /api/tags`, reads `models[].name`. A `:latest` suffix is ignored on both sides when matching names.
+- vLLM: `GET /v1/models`, reads `data[].id`.
+
+| Condition | Status |
+|-----------|--------|
+| Endpoint not allocated yet | Unhealthy |
+| Endpoint unreachable, probe times out, or returns an error or malformed body | Unhealthy |
+| Models missing and `RequireAllModels = true` | Degraded |
+| Models missing and `RequireAllModels = false` | Healthy (only reachability is verified) |
+| All declared models present | Healthy |
+
+`LocalAIHealthCheckOptions` tunes the check:
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `Timeout` | `TimeSpan` | 10 seconds | Maximum time for a single probe request. Listing models on a cold Ollama instance can be slow. |
+| `RequireAllModels` | `bool` | `true` | When `true`, a missing model makes the check Degraded. When `false`, only endpoint reachability is checked. |
+| `WarmupPrompt` | `string?` | `null` | When set, sends a one-token prompt once all declared models are present, so the first real request does not pay the model load cost. A warm-up failure is only reported in the check data and is retried on the next run; it never marks the resource unhealthy. |
+
+```csharp
+var ollama = builder.AddOllama("ollama")
+    .WithModel("llama3.2")
+    .WithModelHealthCheck(new LocalAIHealthCheckOptions { Timeout = TimeSpan.FromSeconds(30), WarmupPrompt = "hi" });
+
+builder.AddProject<Projects.Api>("api")
+    .WithReference(ollama)
+    .WaitFor(ollama);
+```
+
+`WaitFor(ollama)` holds the consuming project until the resource reports Healthy. A Degraded check (missing model) therefore
+keeps the dependent project waiting, so pull the models you need or set `RequireAllModels = false` if that is not wanted.
+
+## Connection strings
+
+| Server | Connection string | Example |
+|--------|-------------------|---------|
+| Ollama | `Endpoint=http://host:port` | `Endpoint=http://localhost:11434` |
+| vLLM | `Endpoint=http://host:port/v1;Model=name` | `Endpoint=http://localhost:8000/v1;Model=Qwen/Qwen2.5-7B-Instruct` |
+
+`WithReference(resource)` injects the connection string into the consuming project as the `ConnectionStrings__<name>`
+environment variable, where `<name>` is the resource name. Read it with `GetConnectionString("<name>")`. The host
+and port are assigned by Aspire at run time, so never hardcode them.
+
+Model weights are stored in a volume when you call `WithDataVolume()`. The default volume name is `<resource>-data`,
+and it can be overridden with `WithDataVolume("name")`.
+
+| Server | Mount path in the container |
+|--------|-----------------------------|
+| Ollama | `/root/.ollama` |
+| vLLM | `/root/.cache/huggingface` |
+
 ## Status
 
 Early scaffold. Public API shape is defined; implementations are in progress. See issues for the roadmap.
