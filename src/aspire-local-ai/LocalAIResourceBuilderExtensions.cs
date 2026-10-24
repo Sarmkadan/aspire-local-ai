@@ -67,10 +67,24 @@ public static class LocalAIResourceBuilderExtensions
     /// <param name="builder">The resource builder.</param>
     /// <param name="modelName">Model tag.</param>
     /// <returns>The same builder for chaining.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown for <see cref="VllmResource"/>, which serves exactly the model passed to <see cref="AddVllm"/>.
+    /// </exception>
     public static IResourceBuilder<T> WithModel<T>(this IResourceBuilder<T> builder, string modelName)
         where T : ContainerResource, ILocalModelServer
     {
-        throw new NotImplementedException();
+        if (builder.Resource is OllamaResource ollama)
+        {
+            ollama.AddModel(modelName);
+        }
+        else if (builder.Resource is VllmResource)
+        {
+            throw new InvalidOperationException(
+                $"vLLM resource '{builder.Resource.Name}' serves exactly the model passed to AddVllm; " +
+                $"WithModel('{modelName}') is not supported. Create a separate vLLM resource for another model.");
+        }
+
+        return builder.WithAnnotation(new ModelAnnotation(modelName));
     }
 
     /// <summary>
